@@ -5,13 +5,14 @@
 #include <string.h>
 
 
-// Define o tamanho dos campos de texto
-#define TAMANHO_NOME 60
+// Define o tamanho dos campos de texto +1 para o null terminator
+#define TAMANHO_NOME 60+1
 #define TAMANHO_PRONTUARIO 8+1
 
 
 // Gera arquivos de log
 #define DEBUG_MODE 1
+
 
 // Dados de usuários
 typedef struct
@@ -87,7 +88,12 @@ void dump_user_info(void);
 
 void busca_prontuario(char *prontuario, char tipo_busca);
 
+int file_exists(char *filename);
+
+void log(char *mensagem);
+
 void test_run(void);
+
 
 // ============= CONSTRUÇÃO DE FUNÇÕES =======================
 
@@ -131,7 +137,7 @@ void finaliza_programa(void)
 // Exibe menu principal
 void main_menu(void)
 {
-    int choice;
+    char choice;
 
     do
     {
@@ -142,9 +148,7 @@ void main_menu(void)
         printf("3. Gerenciar usuários\n\n");
         printf("0. Sair\n\n");
         printf("X. EXECUTAR ROTINA DE TESTES\n\n");
-
-
-        printf("Selecione a opção: ");
+        printf("Selecione uma opção: ");
 
         fflush(stdin);
         choice = getche();
@@ -182,14 +186,18 @@ void main_menu(void)
     } while(choice != '0');
 }
 
-// Gerencia login de usuário
+// Gerencia login de usuário.
+// FUNÇÃO INCOMPLETA!
+// Funcionalidades possíveis:
+
 void login(void)
 {
     char username[TAMANHO_NOME];
     char prontuario[TAMANHO_PRONTUARIO];
 
     system("cls");
-    printf("Informe seu nome:\n");
+    printf("Informe seu nome de usuário:\n");
+    printf("(O nome de usuário é seu primeiro nome em letras maiúsculas)\n");
     gets(username);
 
     printf("\n\nInforme seu prontuário:\n");
@@ -197,7 +205,6 @@ void login(void)
 
     printf("\nNome informado: %s\n", username);
     printf("Prontuário informado: %s", prontuario);
-
 }
 
 // Verifica se o arquivo foi escrito corretamente
@@ -244,6 +251,7 @@ void get_user_list_stats(void)
 }
 
 // Imprime os dados dos registros na tela
+// TODO: flag para dumpar essa info em um txt
 void dump_user_info(void)
 {
     USUARIO *user_pointer = user_list; // Aponta para o primeiro registro de usuário
@@ -255,7 +263,7 @@ void dump_user_info(void)
     }
 }
 
-// Busca um rontuário na lista de usuários
+// Busca um prontuário na lista de registros
 void busca_prontuario(char *prontuario, char tipo_busca)
 {
     /*  TIPOS DE BUSCA:
@@ -299,29 +307,76 @@ void busca_prontuario(char *prontuario, char tipo_busca)
     }
 }
 
+// Retorna 1 caso o arquivo exista no disco, do contrário retorna 0;
+int file_exists(char *filename)
+{
+    FILE *file;
+
+    file = fopen(filename, "r");
+
+    if (file == NULL)
+        return(0);
+    else
+        return(1);
+}
+
+// Gera arquivo de log
+void log(char *mensagem, int print_to_screen)
+{
+    FILE *log_file;
+    
+    // Cria arquivo de log caso ele não exista
+    if (file_exists("log.txt") == 0)
+    {
+        log_file = fopen("log.txt", "w");
+        valida_arquivo(log_file);
+    }
+    
+    // Escreve mensagem no arquivo
+    log_file = fopen("log.txt", "a");
+    fprintf(log_file, mensagem);
+    if (print_to_screen == 1)
+    {
+        printf("%s\n", mensagem);
+    }
+    valida_arquivo(log_file);
+    fclose(log_file);
+}
+
 void test_run(void)
 {
     char prontuario_teste[TAMANHO_PRONTUARIO]; // Armazena prontuário temporário para teste manual
 
     system("cls");
+    printf("****************************************\n");
     printf("INICIANDO ROTINAS DE TESTE\n");
-
-    printf("Criando arquivo USUARIOS.DAT\n");
+    printf("****************************************\n\n");
+    
+    printf("Criando arquivo USUARIOS.DAT\n\n");
+    
     make_user_dat();
+    
+    if (file_exists("USUARIOS.DAT"))
+        printf("Arquivo USUARIOS.DAT criado com sucesso.\n");
+    else
+        printf("Erro ao criar arquivo USUARIOS.DAT\n");
+    
     get_user_list_stats();
 
-    printf("\nExibindo dados de usuários:\n\n");
+    printf("\nEXIBINDO DADOS DE USUÁRIOS:\n\n");
     dump_user_info();
-
-    printf("\n\nTestando função de busca do prontuário com valor pré-definido (Sp07102X):\n");
+    
+    printf("\n\nTESTANDO FUNÇÃO DE BUSCA DO PRONTUÁRIO COM VALOR PRÉ-DEFINIDO (SP07102X):\n");
     busca_prontuario("SP07102X", 'L');
 
-    printf("\n\nTestando função de busca com valor manual.\n");
+    printf("\n\nTESTANDO FUNÇÃO DE BUSCA COM VALOR MANUAL:\n");
     printf("Digite o prontuário que deseja consultar:\n");
 
     gets(prontuario_teste);
     busca_prontuario(prontuario_teste, 'L');
 
-    printf("\n\nFim da rotina de testes!\n");
+    printf("\n\n****************************************\n");
+    printf("FIM DA ROTINA DE TESTES!\n");
+    printf("****************************************\n");
     getch();
 }

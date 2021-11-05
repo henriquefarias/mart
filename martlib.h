@@ -4,15 +4,16 @@
 #include <locale.h>
 #include <string.h>
 
-
 // Define o tamanho dos campos de texto +1 para o null terminator
 #define TAMANHO_NOME 60+1
 #define TAMANHO_PRONTUARIO 8+1
 
+// Tipos booleanos
+#define TRUE 1
+#define FALSE NULL
 
 // Gera arquivos de log
-#define DEBUG_MODE 1
-
+#define DEBUG_MODE TRUE
 
 // Dados de usuários
 typedef struct
@@ -21,19 +22,14 @@ typedef struct
     char prontuario[TAMANHO_PRONTUARIO];
 } USUARIO;
 
-// Dados dos itens
-typedef struct
-{
-    char nome_produto[];
-    float valor;
-} PRODUTO;
-
 
 // ============= USUÁRIOS PRÉ-DEFINIDOS =============
 // OBS: Talvez seja melhor mover isso pra função make_dat
 
 USUARIO user_list[] =
 {
+    /*          NOME                            PRONTUÁRIO */
+
     {"Domingos Lucas Latorre de Oliveira",      "CJ146456"},
     {"Leandro Pinto Santana",                   "CP220383"},
     {"Rodrigo Ribeiro de Oliveira",             "RG134168"},
@@ -65,7 +61,6 @@ USUARIO user_list[] =
     {"Josceli Maria Tenorio",                   "SZ124382"}
 };
 
-
 // ============= PROTÓTIPOS DE FUNÇÕES =======================
 
 void not_implemented(void);
@@ -80,7 +75,7 @@ void valida_arquivo(FILE *arquivo);
 
 void make_user_dat(void);
 
-int get_user_list_size(void);
+int user_list_size(void);
 
 void get_user_list_stats(void);
 
@@ -90,9 +85,9 @@ void busca_prontuario(char *prontuario, char tipo_busca);
 
 int file_exists(char *filename);
 
-void log(char *mensagem);
-
 void test_run(void);
+
+void swap_users(int pos1, int pos2);
 
 
 // ============= CONSTRUÇÃO DE FUNÇÕES =======================
@@ -125,14 +120,16 @@ void not_implemented(void)
     system("cls");
 }
 
+
 // Exibe mensagem de despedida e encerra o programa
 void finaliza_programa(void)
 {
     system("cls");
     printf("Obrigado por usar nosso software!");
     getch();
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
+
 
 // Exibe menu principal
 void main_menu(void)
@@ -143,11 +140,14 @@ void main_menu(void)
     {
         system("cls");
         printf("SISTEMA GERENCIADOR DE SUPERMERCADO - VERSÃO BETA\n\n");
+        if (DEBUG_MODE == TRUE)
+            printf("======== OPERANDO EM MODO DEBUG ==============\n\n");
         printf("1. Abastecer gôndolas\n");
         printf("2. Caixa/PDV\n");
         printf("3. Gerenciar usuários\n\n");
         printf("0. Sair\n\n");
-        printf("X. EXECUTAR ROTINA DE TESTES\n\n");
+        if (DEBUG_MODE == TRUE)
+            printf("X. EXECUTAR ROTINA DE TESTES\n\n");
         printf("Selecione uma opção: ");
 
         fflush(stdin);
@@ -177,7 +177,10 @@ void main_menu(void)
             }
 
             case 'X': case 'x':
-                test_run();
+                if (DEBUG_MODE == TRUE)
+                    test_run();
+                else
+                    continue;
 
             default:
                 continue;
@@ -186,10 +189,8 @@ void main_menu(void)
     } while(choice != '0');
 }
 
-// Gerencia login de usuário.
-// FUNÇÃO INCOMPLETA!
-// Funcionalidades possíveis:
 
+// Gerencia login de usuário.
 void login(void)
 {
     char username[TAMANHO_NOME];
@@ -197,26 +198,32 @@ void login(void)
 
     system("cls");
     printf("Informe seu nome de usuário:\n");
-    printf("(O nome de usuário é seu primeiro nome em letras maiúsculas)\n");
+    printf("(O nome de usuário padrão é seu primeiro nome em letras maiúsculas)\n");
     gets(username);
-
     printf("\n\nInforme seu prontuário:\n");
     gets(prontuario);
 
-    printf("\nNome informado: %s\n", username);
-    printf("Prontuário informado: %s", prontuario);
+    if (DEBUG_MODE == TRUE)
+    {
+        printf("\nNome informado: %s\n", username);
+        printf("Prontuário informado: %s\n", prontuario);
+    }
+
+    busca_prontuario(prontuario, 'L');
 }
+
 
 // Verifica se o arquivo foi escrito corretamente
 void valida_arquivo(FILE *arquivo)
 {
     if (arquivo == NULL || ferror(arquivo))
     {
-        printf("Erro ao ler/gravar arquivo!\n");
+        printf("\n*** ERRO AO LER/GRAVAR ARQUIVO! ***\n");
         getch();
-        exit(0);
+        exit(EXIT_FAILURE);
     }
 }
+
 
 // Gera arquivo DAT com usuários pré-definidos
 void make_user_dat(void)
@@ -224,31 +231,38 @@ void make_user_dat(void)
     int i;
     FILE *userDAT;
 
-    userDAT = fopen("USUARIOS.DAT", "w");
-    valida_arquivo(userDAT);
-
-    for (i = 0; i < get_user_list_size(); i++)
+    // Cria arquivo caso não exista
+    if (!file_exists("USUARIOS.DAT"))
     {
-        fwrite(&user_list[i], sizeof(user_list[i]), 1, userDAT);
+        userDAT = fopen("USUARIOS.DAT", "w");
         valida_arquivo(userDAT);
-    }
 
-    fclose(userDAT);
+        for (i = 0; i < user_list_size(); i++)
+        {
+            fwrite(&user_list[i], sizeof(user_list[i]), 1, userDAT);
+            valida_arquivo(userDAT);
+        }
+
+        fclose(userDAT);
+    }
 }
 
-// Retorna o número de registros na lista de usuários
-int get_user_list_size(void)
+
+// Retorna o número de registros de usuário carregados na memória
+int user_list_size(void)
 {
     return((sizeof(user_list)/sizeof(USUARIO)));
 }
+
 
 // Exibe informações sobre a lista de usuários
 void get_user_list_stats(void)
 {
     printf("\nTamanho total dos registros: %d bytes\n", sizeof(user_list));
     printf("Tamanho de cada registro indididual: %d bytes\n", sizeof(USUARIO));
-    printf("Total de registros na lista: %d\n", get_user_list_size());
+    printf("Total de registros na lista: %d\n", user_list_size());
 }
+
 
 // Imprime os dados dos registros na tela
 // TODO: flag para dumpar essa info em um txt
@@ -257,11 +271,12 @@ void dump_user_info(void)
     USUARIO *user_pointer = user_list; // Aponta para o primeiro registro de usuário
 
     // Percorre o array usando ponteiros.
-    for(; user_pointer < &user_list[get_user_list_size()]; user_pointer++)
+    for(; user_pointer < &user_list[user_list_size()]; user_pointer++)
     {
-        printf("%s - %-80s\n", user_pointer->username, user_pointer->prontuario);
+        printf("%s - %s\n", user_pointer->username, user_pointer->prontuario);
     }
 }
+
 
 // Busca um prontuário na lista de registros
 void busca_prontuario(char *prontuario, char tipo_busca)
@@ -273,28 +288,26 @@ void busca_prontuario(char *prontuario, char tipo_busca)
     */
 
     USUARIO *user_pointer = user_list; // Aponta para o primeiro registro de usuário
-    int found = 0; // Flag para indicar se o prontuario foi encontrado
+    int found = FALSE; // Flag para indicar se o prontuario foi encontrado
 
     switch(tipo_busca)
     {
         case 'L': // Busca linear
         {
 
-            for(; user_pointer < &user_list[get_user_list_size()]; user_pointer++)
+            for(; user_pointer < &user_list[user_list_size()]; user_pointer++)
             {
                 if (strcmp(prontuario, user_pointer->prontuario) == 0)
                 {
-                    printf("Prontuário encontrado: %s pertence à %s\n", user_pointer->prontuario, user_pointer->username);
-                    found = 1;
+                    printf("Prontuário encontrado: %s pertence à %s\n",
+                        user_pointer->prontuario, user_pointer->username);
+                    found = TRUE;
                     break;
                 }
             }
 
-            if (found == 0)
-            {
-                printf("Prontuário não encontrado: %s", prontuario);
-            }
-
+            if (found == FALSE)
+                printf("Prontuário não encontrado: %s\n", prontuario);
             break;
         }
 
@@ -302,12 +315,13 @@ void busca_prontuario(char *prontuario, char tipo_busca)
         {
             printf("ERRO - Parâmetro inválido na função de busca [%c]", tipo_busca);
             getch();
-            exit(0);
+            exit(EXIT_FAILURE);
         }
     }
 }
 
-// Retorna 1 caso o arquivo exista no disco, do contrário retorna 0;
+
+// Retorna TRUE caso o arquivo exista no disco, do contrário retorna FALSE;
 int file_exists(char *filename)
 {
     FILE *file;
@@ -315,34 +329,20 @@ int file_exists(char *filename)
     file = fopen(filename, "r");
 
     if (file == NULL)
-        return(0);
+    {
+        fclose(file);
+        return(FALSE);
+    }
+
     else
-        return(1);
+    {
+        fclose(file);
+        return(TRUE);
+    }
 }
 
-// Gera arquivo de log
-void log(char *mensagem, int print_to_screen)
-{
-    FILE *log_file;
-    
-    // Cria arquivo de log caso ele não exista
-    if (file_exists("log.txt") == 0)
-    {
-        log_file = fopen("log.txt", "w");
-        valida_arquivo(log_file);
-    }
-    
-    // Escreve mensagem no arquivo
-    log_file = fopen("log.txt", "a");
-    fprintf(log_file, mensagem);
-    if (print_to_screen == 1)
-    {
-        printf("%s\n", mensagem);
-    }
-    valida_arquivo(log_file);
-    fclose(log_file);
-}
 
+// Executa teste de diversas funções
 void test_run(void)
 {
     char prontuario_teste[TAMANHO_PRONTUARIO]; // Armazena prontuário temporário para teste manual
@@ -351,27 +351,36 @@ void test_run(void)
     printf("****************************************\n");
     printf("INICIANDO ROTINAS DE TESTE\n");
     printf("****************************************\n\n");
-    
-    printf("Criando arquivo USUARIOS.DAT\n\n");
-    
+
+    printf("Criando arquivo USUARIOS.DAT\n");
     make_user_dat();
-    
+
     if (file_exists("USUARIOS.DAT"))
         printf("Arquivo USUARIOS.DAT criado com sucesso.\n");
     else
         printf("Erro ao criar arquivo USUARIOS.DAT\n");
-    
+
     get_user_list_stats();
 
-    printf("\nEXIBINDO DADOS DE USUÁRIOS:\n\n");
+    printf("\n*** EXIBINDO DADOS DE USUÁRIOS ***\n\n");
     dump_user_info();
-    
-    printf("\n\nTESTANDO FUNÇÃO DE BUSCA DO PRONTUÁRIO COM VALOR PRÉ-DEFINIDO (SP07102X):\n");
+
+    // Troca a posição dos 2 primeiros registros
+    printf("\n\n*** TESTANDO FUNÇÃO DE SWAP ***\n\n");
+    printf("Status antes do swap:\n");
+    printf("\nusuário 1: %s\nusuário 2: %s\n", user_list[0].username, user_list[1].username);
+
+    swap_users(0, 1);
+
+    printf("\nStatus após swap:\n");
+    printf("\nusuário 1: %s\nusuário 2: %s\n", user_list[0].username, user_list[1].username);
+
+    // Teste das funções de busca
+    printf("\n\n*** TESTANDO FUNÇÃO DE BUSCA DO PRONTUÁRIO COM VALOR PRÉ-DEFINIDO (SP07102X) ***\n\n");
     busca_prontuario("SP07102X", 'L');
 
-    printf("\n\nTESTANDO FUNÇÃO DE BUSCA COM VALOR MANUAL:\n");
+    printf("\n\n*** TESTANDO FUNÇÃO DE BUSCA COM VALOR MANUAL ***\n\n");
     printf("Digite o prontuário que deseja consultar:\n");
-
     gets(prontuario_teste);
     busca_prontuario(prontuario_teste, 'L');
 
@@ -379,4 +388,21 @@ void test_run(void)
     printf("FIM DA ROTINA DE TESTES!\n");
     printf("****************************************\n");
     getch();
+}
+
+
+// Troca os usuários nas posições indicadas
+void swap_users(int pos1, int pos2)
+{
+    USUARIO temp_user;
+
+    // Verifica se os valores informados estão dentro dos limites
+    if (pos1 >= 0 && pos1 < user_list_size() && pos2 >= 0 && pos2 < user_list_size())
+    {
+        temp_user = user_list[pos1];
+        user_list[pos1] = user_list[pos2];
+        user_list[pos2] = temp_user;
+    }
+    else if (DEBUG_MODE == TRUE)
+        printf("\nERRO na função swap_users: índices informados estão fora dos limites [%d, %d]. Swap abortado.", pos1, pos2);
 }

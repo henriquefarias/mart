@@ -6,7 +6,9 @@ int main(void)
     system("cls");
     // login();
     // getch();
-    main_menu();
+    // main_menu();
+    // load_DAT("USUARIOS.DAT");
+    test_load_DAT();
     getch();
     return(0);
 }

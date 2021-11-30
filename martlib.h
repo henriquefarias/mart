@@ -4,80 +4,98 @@
 #include <locale.h>
 #include <string.h>
 
-// Define o tamanho dos campos de texto +1 para o null terminator
-#define TAMANHO_NOME 60+1
-#define TAMANHO_PRONTUARIO 8+1
+/* Define o tamanho dos campos de texto +1 para o null terminator */
+#define USERNAME_SIZE 60+1
+#define PRONTUARIO_SIZE 8+1
+#define PROD_NAME_SIZE 60+1
+#define PROD_DESCR_SIZE 100+1
 
-// Tipos booleanos
-#define TRUE 1
+/* Tipos booleanos */
+#define TRUE (!NULL)
 #define FALSE NULL
 
-// Gera arquivos de log
+/* Gera mensagens de debug */
 #define DEBUG_MODE TRUE
 
-// Dados de usuários
+
+/* Armazena informações dos usuários */
 typedef struct
 {
-    char username[TAMANHO_NOME];
-    char prontuario[TAMANHO_PRONTUARIO];
-} USUARIO;
+    char username[USERNAME_SIZE];
+    char prontuario[PRONTUARIO_SIZE];
+
+} USER;
 
 
-// ============= USUÁRIOS PRÉ-DEFINIDOS =============
-// OBS: Talvez seja melhor mover isso pra função make_dat
-
-USUARIO user_list[] =
+/* Armazena informações sobre os produtos */
+typedef struct
 {
-    /*          NOME                            PRONTUÁRIO */
+    int cod_prod;
+    char nome[PROD_NAME_SIZE];
+    char descricao[PROD_DESCR_SIZE];
+    float peso;
+    float custo;
 
-    {"Domingos Lucas Latorre de Oliveira",      "CJ146456"},
-    {"Leandro Pinto Santana",                   "CP220383"},
-    {"Rodrigo Ribeiro de Oliveira",             "RG134168"},
-    {"Andre Luiz da Silva",                     "SP030028"},
-    {"Claudia Miyuki Werhmuller",               "SP030041"},
-    {"Claudete de Oliveira Alves",              "SP03020X"},
-    {"Francisco Verissimo Luciano",             "SP030247"},
-    {"Luk Cho Man",                             "SP060380"},
-    {"Ivan Francolin Martinez",                 "SP060835"},
-    {"Joao Vianei Tamanini",                    "SP060914"},
-    {"Jose Oscar Machado Alexandre",            "SP070038"},
-    {"Jose Braz de Araujo",                     "SP070385"},
-    {"Paulo Roberto de Abreu",                  "SP070816"},
-    {"Eurides Balbino da Silva",                "SP07102X"},
-    {"Domingos Bernardo Gomes Santos",          "SP090888"},
-    {"Andre Evandro Lourenco",                  "SP100092"},
-    {"Miguel Angelo Tancredi Molina",           "SP102763"},
-    {"Antonio Airton Palladino",                "SP112197"},
-    {"Luis Fernando Aires Branco Menegueti",    "SP145385"},
-    {"Antonio Ferreira Viana",                  "SP200827"},
-    {"Leonardo Bertholdo",                      "SP204973"},
-    {"Marcelo Tavares de Santana",              "SP20500X"},
-    {"Daniel Marques Gomes de Morais",          "SP220097"},
-    {"Alexandre Beletti Ferreira",              "SP226117"},
-    {"Vladimir Camelo Pinto",                   "SP240291"},
-    {"Leonardo Andrade Motta de Lima",          "SP24031X"},
-    {"Aldo Marcelo Paim",                       "SP240497"},
-    {"Cesar Lopes Fernandes",                   "SP890534"},
-    {"Josceli Maria Tenorio",                   "SZ124382"}
+} PRODUCT;
+
+
+/* Armazena um nó individual da lista encadeada */
+ struct USER_NODE
+{
+    int position; /* Posição que o nó ocupa na lista */
+    USER data; /* Armazena um registro de usuário individual */
+    struct USER_NODE *next; /* Endereço do próximo nó. O último nó da lista deve apontar para NULL */
 };
 
-// ============= PROTÓTIPOS DE FUNÇÕES =======================
+
+/* Lista encadeada */
+typedef struct
+{
+    struct USER_NODE *head;
+    struct USER_NODE *users;
+
+} USER_LIST;
+
+
+/* ============= USUÁRIOS PRÉ-DEFINIDOS =============*/
+
+USER user_list[5];
+
+/* ======================== PRODUTOS DISPONÍVEIS ======================== */
+
+PRODUCT prod_list[] =
+{
+    /* CÓDIGO       NOME            DESCRIÇÃO            PESO (KG) PREÇO */
+    {   1,    "Contra filé",        "Preço por kg",      1.0,      39.99},
+    {   2,    "Ovo Caipira",        "12 unidades",       0.6,      7.50},
+    {   3,    "Leite integral",     "Garrafa 1L",        1.0,      5.99},
+    {   4,    "Pão francês",        "Preço por kg",      1.0,      5.55},
+    {   5,    "Abacaxi",            "Preço por unidade", 0.8,      6.50},
+    {   6,    "Álcool gel 70%",     "Frasco 500ml",      0.5,      7.25},
+    {   7,    "Biscoito recheado",  "Pacote 200g",       0.2,      2.99},
+    {   8,    "Chocolate ao leite", "Barra 200g",        0.2,      5.80}
+};
+
+
+/* ============= PROTÓTIPOS DE FUNÇÕES ======================= */
+
+USER_LIST *build_user_list(int list_size);
 
 void not_implemented(void);
 
-void finaliza_programa(void);
+void exit_program(void);
 
 void main_menu(void);
 
 void login(void);
 
-void valida_arquivo(FILE *arquivo);
+void validate_file(FILE *file);
+
+void validate_allocation(void *object);
 
 void make_user_dat(void);
 
 int user_list_size(void);
-
-void get_user_list_stats(void);
 
 void dump_user_info(void);
 
@@ -85,14 +103,145 @@ void busca_prontuario(char *prontuario, char tipo_busca);
 
 int file_exists(char *filename);
 
-void test_run(void);
+int get_size(USER_LIST *list);
 
-void swap_users(int pos1, int pos2);
+void swap_users(USER *user1, USER *user2);
 
 
-// ============= CONSTRUÇÃO DE FUNÇÕES =======================
+/* ============= CONSTRUÇÃO DE FUNÇÕES ======================= */
 
-// Mensagem temporária
+/*  Cria uma lista encadeada e retorna um ponteiro para ela
+    OBS: talvez seja possível usar ponteiros genéricos, assim não é necessário fazer uma função separada para a lista de produtos. */
+USER_LIST *build_user_list(int list_size)
+{
+    int i;
+    USER_LIST *list;
+    struct USER_NODE *temp_user;
+
+    if (list_size > 0)
+    {
+        /* Aloca a lista propriamente dita */
+        list = (USER_LIST *) malloc(sizeof(USER_LIST));
+        validate_allocation(list);
+
+        /* Aloca os nós da lista */
+        list->users = (struct USER_NODE *) malloc(list_size * sizeof(struct USER_NODE));
+        validate_allocation(list->users);
+
+        /*  Ajusta a posição inicial.
+            Protip: O nome de um array em C é o endereço do primeiro elemento (ou seja, vect é igual a &vect[0]). */
+        list->head = list->users;
+
+        /* Ajusta os índices e ponteiros */
+        temp_user = list->head;
+
+        for (i = 0; i < list_size; i++)
+        {
+            temp_user->position = i;
+
+            /* Ao atingir o último item da lista, ajustamos seu ponteiro para NULL */
+            if (i == list_size - 1)
+                temp_user->next = NULL;
+            /* Do contrário, incrementamos o endereço. Como estamos lidando com valores contínuos na memória, basta somar 1 ao endereço anterior. */
+            else
+                temp_user->next = temp_user + 1;
+
+            /* Aqui seria possível usar temp_user++, mas é melhor seguir o ponteiro criado anteriormente. */
+            temp_user = temp_user->next;
+        }
+            return(list);
+    }
+}
+
+
+/* Retorna o tamanho de uma lista */
+int get_size(USER_LIST *list)
+{
+    int size = 0;
+    struct USER_NODE *current_node = list->head;
+
+    while (1)
+    {
+
+        if (current_node == NULL) /* Lista possui zero elementos */
+            return(0);
+
+        else
+        {
+            size++;
+
+            /* Sai do loop ao atingir o fim da lista */
+            if (current_node->next == NULL)
+                break;
+
+            else
+                current_node = current_node->next;
+        }
+    }
+
+    return(size);
+}
+
+
+/* Carrega dados do arquivo DAT para uma lista pré-alocada */
+void load_users_dat(char *filename, USER_LIST *list)
+{
+    FILE *dat_file;
+    struct USER_NODE *current_user;
+    USER temp_user;
+
+    if (file_exists(filename))
+    {
+        /* printf("Arquivo encontrado: %s", filename); */
+        dat_file = fopen(filename, "r");
+        validate_file(dat_file);
+
+        current_user = list->head; // Primeiro nó da lista
+
+        while (!feof(dat_file))
+        {
+
+            fread(&temp_user, sizeof(USER), 1, dat_file);
+
+            if (!feof(dat_file))
+            {
+                strcpy(current_user->data.username, temp_user.username);
+                strcpy(current_user->data.prontuario, temp_user.prontuario);
+                // printf("%s - %s\n", current_user->data.username, current_user->data.prontuario);
+                current_user = current_user->next;
+
+            }
+        }
+    }
+
+    else
+    {
+        system("cls");
+        printf("ERRO: Arquivo não encontrado: %s", filename);
+    }
+}
+
+void print_users(USER_LIST * list)
+{
+    struct USER_NODE *current_user = list->head;
+
+    printf("Valores na lista:\n\n");
+    while(1)
+    {
+        printf("%d. %s - %s\n", current_user->position, current_user->data.username, current_user->data.prontuario);
+
+        if (current_user->next == NULL)
+        {
+            printf("Fim da lista!\n\n");
+            break;
+        }
+        else
+            current_user = current_user->next;
+    }
+}
+
+
+/* Mensagem temporária */
 void not_implemented(void)
 {
     system("cls");
@@ -121,8 +270,8 @@ void not_implemented(void)
 }
 
 
-// Exibe mensagem de despedida e encerra o programa
-void finaliza_programa(void)
+/* Exibe mensagem de despedida e encerra o programa */
+void exit_program(void)
 {
     system("cls");
     printf("Obrigado por usar nosso software!");
@@ -131,7 +280,7 @@ void finaliza_programa(void)
 }
 
 
-// Exibe menu principal
+/* Exibe menu principal */
 void main_menu(void)
 {
     char choice;
@@ -141,13 +290,14 @@ void main_menu(void)
         system("cls");
         printf("SISTEMA GERENCIADOR DE SUPERMERCADO - VERSÃO BETA\n\n");
         if (DEBUG_MODE == TRUE)
+        {
             printf("======== OPERANDO EM MODO DEBUG ==============\n\n");
+            printf("X. EXECUTAR ROTINA DE TESTES\n\n");
+        }
         printf("1. Abastecer gôndolas\n");
         printf("2. Caixa/PDV\n");
         printf("3. Gerenciar usuários\n\n");
         printf("0. Sair\n\n");
-        if (DEBUG_MODE == TRUE)
-            printf("X. EXECUTAR ROTINA DE TESTES\n\n");
         printf("Selecione uma opção: ");
 
         fflush(stdin);
@@ -156,7 +306,7 @@ void main_menu(void)
         switch(choice)
         {
             case '0':
-                finaliza_programa();
+                exit_program();
 
             case '1':
             {
@@ -176,11 +326,12 @@ void main_menu(void)
                 continue;
             }
 
-            case 'X': case 'x':
+// OBSOLETO - funções de teste foram movidas
+/*             case 'X': case 'x':
                 if (DEBUG_MODE == TRUE)
                     test_run();
                 else
-                    continue;
+                    continue; */
 
             default:
                 continue;
@@ -190,11 +341,12 @@ void main_menu(void)
 }
 
 
-// Gerencia login de usuário.
+/* Gerencia login de usuário.
+Sugestão: ler parametros ao invés de usar scanf. */
 void login(void)
 {
-    char username[TAMANHO_NOME];
-    char prontuario[TAMANHO_PRONTUARIO];
+    char username[USERNAME_SIZE];
+    char prontuario[PRONTUARIO_SIZE];
 
     system("cls");
     printf("Informe seu nome de usuário:\n");
@@ -209,38 +361,87 @@ void login(void)
         printf("Prontuário informado: %s\n", prontuario);
     }
 
-    busca_prontuario(prontuario, 'L');
+    // busca_prontuario(prontuario, 'L');
 }
 
 
-// Verifica se o arquivo foi escrito corretamente
-void valida_arquivo(FILE *arquivo)
+/* Verifica se o arquivo foi escrito corretamente. */
+void validate_file(FILE *file)
 {
-    if (arquivo == NULL || ferror(arquivo))
+    if (file == NULL || ferror(file))
     {
-        printf("\n*** ERRO AO LER/GRAVAR ARQUIVO! ***\n");
+        system("cls");
+        printf("*** ERRO AO LER/GRAVAR ARQUIVO! ***");
         getch();
         exit(EXIT_FAILURE);
     }
 }
 
 
-// Gera arquivo DAT com usuários pré-definidos
+/* Testa se alocação de memória foi bem sucedida. Caso negativo, encerra o programa. */
+void validate_allocation(void *object)
+{
+    if (object == NULL)
+    {
+        system("cls");
+        printf("*** ERRO AO ALOCAR MEMÓRIA! ***");
+        getch();
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+/* Gera arquivo DAT com usuários pré-definidos. */
 void make_user_dat(void)
 {
     int i;
+    int list_size = 29; /* Valor harcoded para simplificar testes */
     FILE *userDAT;
+    USER default_users[] =
+    {
+        /*          NOME                            PRONTUÁRIO */
 
-    // Cria arquivo caso não exista
+        {"Domingos Lucas Latorre de Oliveira",      "CJ146456"},
+        {"Leandro Pinto Santana",                   "CP220383"},
+        {"Rodrigo Ribeiro de Oliveira",             "RG134168"},
+        {"Andre Luiz da Silva",                     "SP030028"},
+        {"Claudia Miyuki Werhmuller",               "SP030041"},
+        {"Claudete de Oliveira Alves",              "SP03020X"},
+        {"Francisco Verissimo Luciano",             "SP030247"},
+        {"Luk Cho Man",                             "SP060380"},
+        {"Ivan Francolin Martinez",                 "SP060835"},
+        {"Joao Vianei Tamanini",                    "SP060914"},
+        {"Jose Oscar Machado Alexandre",            "SP070038"},
+        {"Jose Braz de Araujo",                     "SP070385"},
+        {"Paulo Roberto de Abreu",                  "SP070816"},
+        {"Eurides Balbino da Silva",                "SP07102X"},
+        {"Domingos Bernardo Gomes Santos",          "SP090888"},
+        {"Andre Evandro Lourenco",                  "SP100092"},
+        {"Miguel Angelo Tancredi Molina",           "SP102763"},
+        {"Antonio Airton Palladino",                "SP112197"},
+        {"Luis Fernando Aires Branco Menegueti",    "SP145385"},
+        {"Antonio Ferreira Viana",                  "SP200827"},
+        {"Leonardo Bertholdo",                      "SP204973"},
+        {"Marcelo Tavares de Santana",              "SP20500X"},
+        {"Daniel Marques Gomes de Morais",          "SP220097"},
+        {"Alexandre Beletti Ferreira",              "SP226117"},
+        {"Vladimir Camelo Pinto",                   "SP240291"},
+        {"Leonardo Andrade Motta de Lima",          "SP24031X"},
+        {"Aldo Marcelo Paim",                       "SP240497"},
+        {"Cesar Lopes Fernandes",                   "SP890534"},
+        {"Josceli Maria Tenorio",                   "SZ124382"}
+    };
+
+    /* Cria arquivo caso não exista */
     if (!file_exists("USUARIOS.DAT"))
     {
         userDAT = fopen("USUARIOS.DAT", "w");
-        valida_arquivo(userDAT);
+        validate_file(userDAT);
 
-        for (i = 0; i < user_list_size(); i++)
+        for (i = 0; i < list_size; i++)
         {
-            fwrite(&user_list[i], sizeof(user_list[i]), 1, userDAT);
-            valida_arquivo(userDAT);
+            fwrite(&default_users[i], sizeof(USER), 1, userDAT);
+            validate_file(userDAT);
         }
 
         fclose(userDAT);
@@ -248,37 +449,29 @@ void make_user_dat(void)
 }
 
 
-// Retorna o número de registros de usuário carregados na memória
+/* Retorna o número de registros de usuário carregados na memória. */
 int user_list_size(void)
 {
-    return((sizeof(user_list)/sizeof(USUARIO)));
+    return(sizeof(user_list)/sizeof(USER));
 }
 
 
-// Exibe informações sobre a lista de usuários
-void get_user_list_stats(void)
-{
-    printf("\nTamanho total dos registros: %d bytes\n", sizeof(user_list));
-    printf("Tamanho de cada registro indididual: %d bytes\n", sizeof(USUARIO));
-    printf("Total de registros na lista: %d\n", user_list_size());
-}
-
-
-// Imprime os dados dos registros na tela
-// TODO: flag para dumpar essa info em um txt
+/* Imprime os dados dos registros na tela
+TODO: flag para dumpar essa info em um txt */
 void dump_user_info(void)
 {
-    USUARIO *user_pointer = user_list; // Aponta para o primeiro registro de usuário
+    int list_size = 29; // Valor hardcoded para teste - deve ser removido!
+    USER *user_pointer = user_list; /* Aponta para o primeiro registro de usuário */
 
-    // Percorre o array usando ponteiros.
-    for(; user_pointer < &user_list[user_list_size()]; user_pointer++)
+    /* Percorre o array usando ponteiros. */
+    for(; user_pointer < &user_list[list_size]; user_pointer++)
     {
         printf("%s - %s\n", user_pointer->username, user_pointer->prontuario);
     }
 }
 
 
-// Busca um prontuário na lista de registros
+/* Busca um prontuário na lista de registros */
 void busca_prontuario(char *prontuario, char tipo_busca)
 {
     /*  TIPOS DE BUSCA:
@@ -287,12 +480,12 @@ void busca_prontuario(char *prontuario, char tipo_busca)
         B: Busca binária (não implementado)
     */
 
-    USUARIO *user_pointer = user_list; // Aponta para o primeiro registro de usuário
-    int found = FALSE; // Flag para indicar se o prontuario foi encontrado
+    USER *user_pointer = user_list; /* Aponta para o primeiro registro de usuário */
+    int found = FALSE; /* Flag para indicar se o prontuario foi encontrado */
 
     switch(tipo_busca)
     {
-        case 'L': // Busca linear
+        case 'L': /* Busca linear */
         {
 
             for(; user_pointer < &user_list[user_list_size()]; user_pointer++)
@@ -321,12 +514,10 @@ void busca_prontuario(char *prontuario, char tipo_busca)
 }
 
 
-// Retorna TRUE caso o arquivo exista no disco, do contrário retorna FALSE;
+/* Retorna TRUE caso o arquivo exista no disco, do contrário retorna FALSE; */
 int file_exists(char *filename)
 {
-    FILE *file;
-
-    file = fopen(filename, "r");
+    FILE *file = fopen(filename, "r");
 
     if (file == NULL)
     {
@@ -342,67 +533,12 @@ int file_exists(char *filename)
 }
 
 
-// Executa teste de diversas funções
-void test_run(void)
+/* Troca os usuários indicados de posição */
+void swap_users(USER *user1, USER *user2)
 {
-    char prontuario_teste[TAMANHO_PRONTUARIO]; // Armazena prontuário temporário para teste manual
+    USER temp_user;
 
-    system("cls");
-    printf("****************************************\n");
-    printf("INICIANDO ROTINAS DE TESTE\n");
-    printf("****************************************\n\n");
-
-    printf("Criando arquivo USUARIOS.DAT\n");
-    make_user_dat();
-
-    if (file_exists("USUARIOS.DAT"))
-        printf("Arquivo USUARIOS.DAT criado com sucesso.\n");
-    else
-        printf("Erro ao criar arquivo USUARIOS.DAT\n");
-
-    get_user_list_stats();
-
-    printf("\n*** EXIBINDO DADOS DE USUÁRIOS ***\n\n");
-    dump_user_info();
-
-    // Troca a posição dos 2 primeiros registros
-    printf("\n\n*** TESTANDO FUNÇÃO DE SWAP ***\n\n");
-    printf("Status antes do swap:\n");
-    printf("\nusuário 1: %s\nusuário 2: %s\n", user_list[0].username, user_list[1].username);
-
-    swap_users(0, 1);
-
-    printf("\nStatus após swap:\n");
-    printf("\nusuário 1: %s\nusuário 2: %s\n", user_list[0].username, user_list[1].username);
-
-    // Teste das funções de busca
-    printf("\n\n*** TESTANDO FUNÇÃO DE BUSCA DO PRONTUÁRIO COM VALOR PRÉ-DEFINIDO (SP07102X) ***\n\n");
-    busca_prontuario("SP07102X", 'L');
-
-    printf("\n\n*** TESTANDO FUNÇÃO DE BUSCA COM VALOR MANUAL ***\n\n");
-    printf("Digite o prontuário que deseja consultar:\n");
-    gets(prontuario_teste);
-    busca_prontuario(prontuario_teste, 'L');
-
-    printf("\n\n****************************************\n");
-    printf("FIM DA ROTINA DE TESTES!\n");
-    printf("****************************************\n");
-    getch();
-}
-
-
-// Troca os usuários nas posições indicadas
-void swap_users(int pos1, int pos2)
-{
-    USUARIO temp_user;
-
-    // Verifica se os valores informados estão dentro dos limites
-    if (pos1 >= 0 && pos1 < user_list_size() && pos2 >= 0 && pos2 < user_list_size())
-    {
-        temp_user = user_list[pos1];
-        user_list[pos1] = user_list[pos2];
-        user_list[pos2] = temp_user;
-    }
-    else if (DEBUG_MODE == TRUE)
-        printf("\nERRO na função swap_users: índices informados estão fora dos limites [%d, %d]. Swap abortado.", pos1, pos2);
+    temp_user = *user1;
+    *user1 = *user2;
+    *user2 = temp_user;
 }

@@ -39,7 +39,7 @@ typedef struct
 } PRODUCT;
 
 
-/* Armazena um nó individual da lista encadeada */
+/* Armazena um nó individual da lista de usuários */
  struct USER_NODE
 {
     int position; /* Posição que o nó ocupa na lista */
@@ -47,8 +47,16 @@ typedef struct
     struct USER_NODE *next; /* Endereço do próximo nó. O último nó da lista deve apontar para NULL */
 };
 
+/* Armazena um nó individual da lista de produtos */
+struct PROD_NODE
+{
+    int position;
+    PRODUCT data;
+    struct PROD_NODE *next;
+};
 
-/* Lista encadeada */
+
+/* Lista de usuários */
 typedef struct
 {
     struct USER_NODE *head;
@@ -57,9 +65,14 @@ typedef struct
 } USER_LIST;
 
 
-/* ============= USUÁRIOS PRÉ-DEFINIDOS =============*/
+/* Lista de produtos */
+typedef struct
+{
+    struct PROD_NODE *head;
+    struct PROD_NODE *products;
 
-USER user_list[5];
+} PROD_LIST;
+
 
 /* ======================== PRODUTOS DISPONÍVEIS ======================== */
 
@@ -81,6 +94,12 @@ PRODUCT prod_list[] =
 
 USER_LIST *build_user_list(int list_size);
 
+int get_size(USER_LIST *list);
+
+void load_users_dat(char *filename, USER_LIST *list);
+
+void print_users(USER_LIST *list);
+
 void not_implemented(void);
 
 void exit_program(void);
@@ -97,11 +116,11 @@ void make_user_dat(void);
 
 int user_list_size(void);
 
-void dump_user_info(void);
-
 void busca_prontuario(char *prontuario, char tipo_busca);
 
 int file_exists(char *filename);
+
+long int file_size(char *filename);
 
 int get_size(USER_LIST *list);
 
@@ -189,14 +208,15 @@ void load_users_dat(char *filename, USER_LIST *list)
     FILE *dat_file;
     struct USER_NODE *current_user;
     USER temp_user;
+    int current_node_index = 0;
+    int last_node_index = (get_size(list) - 1);
 
     if (file_exists(filename))
     {
-        /* printf("Arquivo encontrado: %s", filename); */
         dat_file = fopen(filename, "r");
         validate_file(dat_file);
 
-        current_user = list->head; // Primeiro nó da lista
+        current_user = list->head; /* Primeiro nó da lista */
 
         while (!feof(dat_file))
         {
@@ -207,9 +227,13 @@ void load_users_dat(char *filename, USER_LIST *list)
             {
                 strcpy(current_user->data.username, temp_user.username);
                 strcpy(current_user->data.prontuario, temp_user.prontuario);
-                // printf("%s - %s\n", current_user->data.username, current_user->data.prontuario);
+                /* printf("%s - %s\n", current_user->data.username, current_user->data.prontuario); */
                 current_user = current_user->next;
 
+                /*  Testa se há espaço de memória alocada. Isso é útil caso o DAT seja maior que o tamanho alocado. */
+                current_node_index++;
+                if (current_node_index > last_node_index)
+                    break;
             }
         }
     }
@@ -221,7 +245,9 @@ void load_users_dat(char *filename, USER_LIST *list)
     }
 }
 
-void print_users(USER_LIST * list)
+
+/* Exibe os registros de usuário carregados na lista fornecida. */
+void print_users(USER_LIST *list)
 {
     struct USER_NODE *current_user = list->head;
 
@@ -235,6 +261,7 @@ void print_users(USER_LIST * list)
             printf("Fim da lista!\n\n");
             break;
         }
+
         else
             current_user = current_user->next;
     }
@@ -289,11 +316,11 @@ void main_menu(void)
     {
         system("cls");
         printf("SISTEMA GERENCIADOR DE SUPERMERCADO - VERSÃO BETA\n\n");
-        if (DEBUG_MODE == TRUE)
+        /*if (DEBUG_MODE == TRUE)
         {
             printf("======== OPERANDO EM MODO DEBUG ==============\n\n");
             printf("X. EXECUTAR ROTINA DE TESTES\n\n");
-        }
+        } */
         printf("1. Abastecer gôndolas\n");
         printf("2. Caixa/PDV\n");
         printf("3. Gerenciar usuários\n\n");
@@ -326,13 +353,6 @@ void main_menu(void)
                 continue;
             }
 
-// OBSOLETO - funções de teste foram movidas
-/*             case 'X': case 'x':
-                if (DEBUG_MODE == TRUE)
-                    test_run();
-                else
-                    continue; */
-
             default:
                 continue;
         }
@@ -360,8 +380,6 @@ void login(void)
         printf("\nNome informado: %s\n", username);
         printf("Prontuário informado: %s\n", prontuario);
     }
-
-    // busca_prontuario(prontuario, 'L');
 }
 
 
@@ -449,69 +467,49 @@ void make_user_dat(void)
 }
 
 
-/* Retorna o número de registros de usuário carregados na memória. */
-int user_list_size(void)
-{
-    return(sizeof(user_list)/sizeof(USER));
-}
+/*  Busca um prontuário na lista de registros
+    OBS: FUNÇÃO OBSOLETA. É necessário adaptar para uso com lista encadeada */
 
-
-/* Imprime os dados dos registros na tela
-TODO: flag para dumpar essa info em um txt */
-void dump_user_info(void)
-{
-    int list_size = 29; // Valor hardcoded para teste - deve ser removido!
-    USER *user_pointer = user_list; /* Aponta para o primeiro registro de usuário */
-
-    /* Percorre o array usando ponteiros. */
-    for(; user_pointer < &user_list[list_size]; user_pointer++)
-    {
-        printf("%s - %s\n", user_pointer->username, user_pointer->prontuario);
-    }
-}
-
-
-/* Busca um prontuário na lista de registros */
-void busca_prontuario(char *prontuario, char tipo_busca)
-{
+// void busca_prontuario(char *prontuario, char tipo_busca)
+// {
     /*  TIPOS DE BUSCA:
 
         L: Busca linear
         B: Busca binária (não implementado)
     */
 
-    USER *user_pointer = user_list; /* Aponta para o primeiro registro de usuário */
-    int found = FALSE; /* Flag para indicar se o prontuario foi encontrado */
+    // USER *user_pointer = user_list; /* Aponta para o primeiro registro de usuário */
+    // int found = FALSE; /* Flag para indicar se o prontuario foi encontrado */
 
-    switch(tipo_busca)
-    {
-        case 'L': /* Busca linear */
-        {
+    // switch(tipo_busca)
+    // {
+        // case 'L': /* Busca linear */
+        // {
 
-            for(; user_pointer < &user_list[user_list_size()]; user_pointer++)
-            {
-                if (strcmp(prontuario, user_pointer->prontuario) == 0)
-                {
-                    printf("Prontuário encontrado: %s pertence à %s\n",
-                        user_pointer->prontuario, user_pointer->username);
-                    found = TRUE;
-                    break;
-                }
-            }
+            // for(; user_pointer < &user_list[user_list_size()]; user_pointer++)
+            // {
+                // if (strcmp(prontuario, user_pointer->prontuario) == 0)
+                // {
+                    // printf("Prontuário encontrado: %s pertence à %s\n",
+                        // user_pointer->prontuario, user_pointer->username);
+                    // found = TRUE;
+                    // break;
+                // }
+            // }
 
-            if (found == FALSE)
-                printf("Prontuário não encontrado: %s\n", prontuario);
-            break;
-        }
+            // if (found == FALSE)
+                // printf("Prontuário não encontrado: %s\n", prontuario);
+            // break;
+        // }
 
-        default:
-        {
-            printf("ERRO - Parâmetro inválido na função de busca [%c]", tipo_busca);
-            getch();
-            exit(EXIT_FAILURE);
-        }
-    }
-}
+        // default:
+        // {
+            // printf("ERRO - Parâmetro inválido na função de busca [%c]", tipo_busca);
+            // getch();
+            // exit(EXIT_FAILURE);
+        // }
+    // }
+// }
 
 
 /* Retorna TRUE caso o arquivo exista no disco, do contrário retorna FALSE; */
@@ -520,10 +518,7 @@ int file_exists(char *filename)
     FILE *file = fopen(filename, "r");
 
     if (file == NULL)
-    {
-        fclose(file);
         return(FALSE);
-    }
 
     else
     {
@@ -532,6 +527,25 @@ int file_exists(char *filename)
     }
 }
 
+/* Retorna o tamanho de um arquivo em bytes */
+long int file_size(char *filename)
+{
+    long int size;
+    FILE *file;
+
+    if (file_exists(filename))
+    {
+        file = fopen(filename, "r");
+        fseek(file, 0, SEEK_END);
+        size = ftell(file);
+        fclose(file);
+
+        return(size);
+    }
+
+    else
+        printf("ERRO - Arquivo não encontrado: %s\n", filename);
+}
 
 /* Troca os usuários indicados de posição */
 void swap_users(USER *user1, USER *user2)

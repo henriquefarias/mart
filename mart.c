@@ -8,7 +8,7 @@ int main(void)
     // getch();
     // main_menu();
     // load_DAT("USUARIOS.DAT");
-    test_load_DAT();
+    // test_load_DAT();
     getch();
     return(0);
 }

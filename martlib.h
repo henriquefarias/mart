@@ -47,6 +47,7 @@ typedef struct
     struct USER_NODE *next; /* Endereço do próximo nó. O último nó da lista deve apontar para NULL */
 };
 
+
 /* Armazena um nó individual da lista de produtos */
 struct PROD_NODE
 {
@@ -92,31 +93,14 @@ PRODUCT prod_list[] =
 
 /* ============= PROTÓTIPOS DE FUNÇÕES ======================= */
 
+
+void build_user_dat(void);
+
 USER_LIST *build_user_list(int list_size);
 
-int get_size(USER_LIST *list);
-
-void load_users_dat(char *filename, USER_LIST *list);
-
-void print_users(USER_LIST *list);
-
-void not_implemented(void);
+void busca_prontuario(char *prontuario, char tipo_busca);
 
 void exit_program(void);
-
-void main_menu(void);
-
-void login(void);
-
-void validate_file(FILE *file);
-
-void validate_allocation(void *object);
-
-void make_user_dat(void);
-
-int user_list_size(void);
-
-void busca_prontuario(char *prontuario, char tipo_busca);
 
 int file_exists(char *filename);
 
@@ -124,7 +108,27 @@ long int file_size(char *filename);
 
 int get_size(USER_LIST *list);
 
+int get_size(USER_LIST *list);
+
+void load_users_dat(char *filename, USER_LIST *list);
+
+void write_users_dat(char *filename, USER_LIST *list);
+
+void login(void);
+
+void main_menu(void);
+
+void not_implemented(void);
+
+void print_users(USER_LIST *list);
+
+void sort_list(USER_LIST *list);
+
 void swap_users(USER *user1, USER *user2);
+
+void validate_allocation(void *object);
+
+void validate_file(FILE *file);
 
 
 /* ============= CONSTRUÇÃO DE FUNÇÕES ======================= */
@@ -148,7 +152,7 @@ USER_LIST *build_user_list(int list_size)
         validate_allocation(list->users);
 
         /*  Ajusta a posição inicial.
-            Protip: O nome de um array em C é o endereço do primeiro elemento (ou seja, vect é igual a &vect[0]). */
+            Protip: O nome de um array em C é o endereço do primeiro elemento (ou seja, vect == &vect[0]). */
         list->head = list->users;
 
         /* Ajusta os índices e ponteiros */
@@ -161,6 +165,7 @@ USER_LIST *build_user_list(int list_size)
             /* Ao atingir o último item da lista, ajustamos seu ponteiro para NULL */
             if (i == list_size - 1)
                 temp_user->next = NULL;
+
             /* Do contrário, incrementamos o endereço. Como estamos lidando com valores contínuos na memória, basta somar 1 ao endereço anterior. */
             else
                 temp_user->next = temp_user + 1;
@@ -168,12 +173,16 @@ USER_LIST *build_user_list(int list_size)
             /* Aqui seria possível usar temp_user++, mas é melhor seguir o ponteiro criado anteriormente. */
             temp_user = temp_user->next;
         }
-            return(list);
+
+        return(list);
     }
 }
 
 
 /* Retorna o tamanho de uma lista */
+/* TODO: passar um void pointer e o tipo da lista. Dessa forma não é preciso fazer outra função para a lista de produtos.
+    ex: int get_size(void *list, char list_type) */
+
 int get_size(USER_LIST *list)
 {
     int size = 0;
@@ -183,7 +192,9 @@ int get_size(USER_LIST *list)
     {
 
         if (current_node == NULL) /* Lista possui zero elementos */
-            return(0);
+            /* Aqui é possível usar um break ao invés de return. Como o valor size foi inicializado como 0, ao sair do loop a função automaticamente retorna 0.*/
+            // return(0);
+            break;
 
         else
         {
@@ -199,6 +210,81 @@ int get_size(USER_LIST *list)
     }
 
     return(size);
+}
+
+
+/* Gera arquivo DAT com usuários pré-definidos. */
+void build_user_dat(void)
+{
+    int i, list_size;
+    FILE *userDAT;
+    USER default_users[] =
+    {
+        /*          NOME                            PRONTUÁRIO */
+
+        {"Domingos Lucas Latorre de Oliveira",      "CJ146456"},
+        {"Leandro Pinto Santana",                   "CP220383"},
+        {"Rodrigo Ribeiro de Oliveira",             "RG134168"},
+        {"Andre Luiz da Silva",                     "SP030028"},
+        {"Claudia Miyuki Werhmuller",               "SP030041"},
+        {"Claudete de Oliveira Alves",              "SP03020X"},
+        {"Francisco Verissimo Luciano",             "SP030247"},
+        {"Luk Cho Man",                             "SP060380"},
+        {"Ivan Francolin Martinez",                 "SP060835"},
+        {"Joao Vianei Tamanini",                    "SP060914"},
+        {"Jose Oscar Machado Alexandre",            "SP070038"},
+        {"Jose Braz de Araujo",                     "SP070385"},
+        {"Paulo Roberto de Abreu",                  "SP070816"},
+        {"Eurides Balbino da Silva",                "SP07102X"},
+        {"Domingos Bernardo Gomes Santos",          "SP090888"},
+        {"Andre Evandro Lourenco",                  "SP100092"},
+        {"Miguel Angelo Tancredi Molina",           "SP102763"},
+        {"Antonio Airton Palladino",                "SP112197"},
+        {"Luis Fernando Aires Branco Menegueti",    "SP145385"},
+        {"Antonio Ferreira Viana",                  "SP200827"},
+        {"Leonardo Bertholdo",                      "SP204973"},
+        {"Marcelo Tavares de Santana",              "SP20500X"},
+        {"Daniel Marques Gomes de Morais",          "SP220097"},
+        {"Alexandre Beletti Ferreira",              "SP226117"},
+        {"Vladimir Camelo Pinto",                   "SP240291"},
+        {"Leonardo Andrade Motta de Lima",          "SP24031X"},
+        {"Aldo Marcelo Paim",                       "SP240497"},
+        {"Cesar Lopes Fernandes",                   "SP890534"},
+        {"Josceli Maria Tenorio",                   "SZ124382"}
+    };
+
+
+
+    /* Informa o usuário caso o arquivo já exista */
+    if (file_exists("USUARIOS.DAT"))
+    {
+        printf("Arquivo USUARIOS.DAT já existe!\nDeseja sobrescrever?\n");
+        printf("S = Sim\nN = Não\n\n");
+
+        if (getche() != 'S')
+        {
+            printf("\nOperação de escrita cancelada\n");
+            getch();
+            exit_program();
+        }
+
+        else
+            printf("\nSobrescrevendo arquivo USUARIOS.DAT com dados pré-definidos\n\n");
+    }
+
+    /* Cria arquivo e grava os registros padrão nele */
+    userDAT = fopen("USUARIOS.DAT", "w");
+    validate_file(userDAT);
+
+    list_size = (sizeof(default_users)/sizeof(USER));
+
+    for (i = 0; i < list_size; i++)
+    {
+        fwrite(&default_users[i], sizeof(USER), 1, userDAT);
+        validate_file(userDAT);
+    }
+
+    fclose(userDAT);
 }
 
 
@@ -243,6 +329,55 @@ void load_users_dat(char *filename, USER_LIST *list)
         system("cls");
         printf("ERRO: Arquivo não encontrado: %s", filename);
     }
+}
+
+
+/* Escreve dados da memória no arquivo DAT */
+void write_users_dat(char *filename, USER_LIST *list)
+{
+    FILE *userDAT;
+    struct USER_NODE *current_user = list->head;
+    USER *user_data;
+    char choice;
+
+    /* Informa o usuário caso o arquivo já exista */
+    if (file_exists(filename))
+    {
+        printf("Arquivo %s já existe!\nDeseja sobrescrever?\n", filename);
+        printf("S = Sim\nN = Não\n\n");
+        choice = getche();
+
+        if (choice != 'S')
+        {
+            printf("\nOperação de escrita cancelada\n");
+            getch();
+            exit_program();
+        }
+        else
+            printf("\nSobrescrevendo arquivo %s\n\n", filename);
+    }
+
+    userDAT = fopen(filename, "w");
+    validate_file(userDAT);
+
+    /* Percorre os items da lista e grava no arquivo DAT */
+    while(TRUE)
+    {
+        /* Sai do loop ao atingir o fim da lista */
+        if (current_user == NULL)
+            break;
+
+        else
+        {
+            user_data = &current_user->data;
+            fwrite(user_data, sizeof(USER), 1, userDAT);
+            validate_file(userDAT);
+        }
+
+        current_user = current_user->next;
+    }
+
+    fclose(userDAT);
 }
 
 
@@ -409,63 +544,6 @@ void validate_allocation(void *object)
 }
 
 
-/* Gera arquivo DAT com usuários pré-definidos. */
-void make_user_dat(void)
-{
-    int i;
-    int list_size = 29; /* Valor harcoded para simplificar testes */
-    FILE *userDAT;
-    USER default_users[] =
-    {
-        /*          NOME                            PRONTUÁRIO */
-
-        {"Domingos Lucas Latorre de Oliveira",      "CJ146456"},
-        {"Leandro Pinto Santana",                   "CP220383"},
-        {"Rodrigo Ribeiro de Oliveira",             "RG134168"},
-        {"Andre Luiz da Silva",                     "SP030028"},
-        {"Claudia Miyuki Werhmuller",               "SP030041"},
-        {"Claudete de Oliveira Alves",              "SP03020X"},
-        {"Francisco Verissimo Luciano",             "SP030247"},
-        {"Luk Cho Man",                             "SP060380"},
-        {"Ivan Francolin Martinez",                 "SP060835"},
-        {"Joao Vianei Tamanini",                    "SP060914"},
-        {"Jose Oscar Machado Alexandre",            "SP070038"},
-        {"Jose Braz de Araujo",                     "SP070385"},
-        {"Paulo Roberto de Abreu",                  "SP070816"},
-        {"Eurides Balbino da Silva",                "SP07102X"},
-        {"Domingos Bernardo Gomes Santos",          "SP090888"},
-        {"Andre Evandro Lourenco",                  "SP100092"},
-        {"Miguel Angelo Tancredi Molina",           "SP102763"},
-        {"Antonio Airton Palladino",                "SP112197"},
-        {"Luis Fernando Aires Branco Menegueti",    "SP145385"},
-        {"Antonio Ferreira Viana",                  "SP200827"},
-        {"Leonardo Bertholdo",                      "SP204973"},
-        {"Marcelo Tavares de Santana",              "SP20500X"},
-        {"Daniel Marques Gomes de Morais",          "SP220097"},
-        {"Alexandre Beletti Ferreira",              "SP226117"},
-        {"Vladimir Camelo Pinto",                   "SP240291"},
-        {"Leonardo Andrade Motta de Lima",          "SP24031X"},
-        {"Aldo Marcelo Paim",                       "SP240497"},
-        {"Cesar Lopes Fernandes",                   "SP890534"},
-        {"Josceli Maria Tenorio",                   "SZ124382"}
-    };
-
-    /* Cria arquivo caso não exista */
-    if (!file_exists("USUARIOS.DAT"))
-    {
-        userDAT = fopen("USUARIOS.DAT", "w");
-        validate_file(userDAT);
-
-        for (i = 0; i < list_size; i++)
-        {
-            fwrite(&default_users[i], sizeof(USER), 1, userDAT);
-            validate_file(userDAT);
-        }
-
-        fclose(userDAT);
-    }
-}
-
 
 /*  Busca um prontuário na lista de registros
     OBS: FUNÇÃO OBSOLETA. É necessário adaptar para uso com lista encadeada */
@@ -512,6 +590,52 @@ void make_user_dat(void)
 // }
 
 
+/* Ordena lista em ordem crescente de nomes usando bubble sort */
+void sort_list(USER_LIST *list)
+{
+    struct USER_NODE *current_user;
+    struct USER_NODE *next_user;
+    int swapped; /* Flag para determinar se houve troca de posição */
+    int strcmp_result; /* Armazena o valor retornado por strcmp */
+
+    do
+    {
+        current_user = list->head;
+        next_user = current_user->next;
+        swapped = FALSE;
+
+        /* O loop abaixo percorre todos os elementos da lista comparando os valores com seu vizinho, e realiza troca caso necessário */
+
+        while(current_user->next != NULL)
+        {
+            next_user = current_user->next;
+            strcmp_result = strcmp(current_user->data.username, next_user->data.username);
+
+            /* strcmp retorna um valor positivo quando a segunda string vem antes da primeira.  */
+            if (strcmp_result > 0)
+            {
+
+                swap_users(&current_user->data, &next_user->data);
+                swapped = TRUE;
+
+                /* Após a comparação, avançamos para o próximo nó */
+                current_user = next_user;
+                next_user = current_user->next;
+            }
+
+            else
+            {
+                /* Caso não seja necessário troca, apenas avançamos para o próximo nó */
+                current_user = next_user;
+                next_user = current_user->next;
+            }
+        }
+    }
+
+    while(swapped);
+}
+
+
 /* Retorna TRUE caso o arquivo exista no disco, do contrário retorna FALSE; */
 int file_exists(char *filename)
 {
@@ -547,7 +671,7 @@ long int file_size(char *filename)
         printf("ERRO - Arquivo não encontrado: %s\n", filename);
 }
 
-/* Troca os usuários indicados de posição */
+/* Troca dois usuários de posição */
 void swap_users(USER *user1, USER *user2)
 {
     USER temp_user;
